@@ -1,0 +1,78 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Пользователи системы
+model User {
+  id         String   @id @default(uuid())
+  tgId       BigInt   @unique
+  role       Role     @default(USER) // ADMIN, VENDOR, CUSTOMER
+  stores     Store[]  // Магазины, которыми владеет (если VENDOR)
+}
+
+// Магазин (Tenant)
+model Store {
+  id           String   @id @default(uuid())
+  ownerId      String
+  owner        User     @relation(fields: [ownerId], references: [id])
+  botToken     String   @unique
+  name         String
+  subdomain    String   @unique
+  tier         Tier     @default(PERCENTAGE)
+  balance      Decimal  @default(0) // Баланс для списания комиссий
+  config       Json     // Тема: { primaryColor: "#...", logo: "url" }
+  products     Product[]
+  orders       Order[]
+}
+
+// Товар
+model Product {
+  id          String   @id @default(uuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id])
+  title       String
+  description String
+  price       Decimal
+  images      String[]
+  stock       Int      @default(0)
+}
+
+// Заказ
+model Order {
+  id          String   @id @default(uuid())
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id])
+  customerId  String
+  items       Json     // Список товаров на момент заказа
+  totalAmount Decimal
+  status      OrderStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+}
+
+enum Role {
+  USER
+  ADMIN
+  VENDOR
+  CUSTOMER
+}
+
+enum Tier {
+  PERCENTAGE
+  FIXED
+  CUSTOM
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
